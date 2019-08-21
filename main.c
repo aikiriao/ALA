@@ -119,7 +119,7 @@ int do_encode(const char* in_filename, const char* out_filename)
   BitStream_PutBits(out_strm,  8, 'A');
   BitStream_PutBits(out_strm,  8, 'L');
   BitStream_PutBits(out_strm,  8, 'A');
-  BitStream_PutBits(out_strm,  8, 'C');
+  BitStream_PutBits(out_strm,  8, '\0');
   /* フォーマットバージョン */
   BitStream_PutBits(out_strm, 16, ALA_FORMAT_VERSION);
   /* チャンネル数 */
@@ -285,7 +285,7 @@ int do_decode(const char* in_filename, const char* out_filename)
   if (   (((bitsbuf >> 24) & 0xFF) != 'A')
       || (((bitsbuf >> 16) & 0xFF) != 'L')
       || (((bitsbuf >>  8) & 0xFF) != 'A')
-      || (((bitsbuf >>  0) & 0xFF) != 'C')) {
+      || (((bitsbuf >>  0) & 0xFF) != '\0')) {
     fprintf(stderr, "Invalid signature. \n");
     return 1;
   }
