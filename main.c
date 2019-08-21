@@ -34,7 +34,6 @@ int do_encode(const char* in_filename, const char* out_filename)
   struct ALACoder*          coder;
   struct ALALPCCalculator*  lpcc;
   struct ALALPCSynthesizer* lpcs;
-  struct ALAEmphasisFilter* emp;
   uint32_t  ch, smpl, ord;
   double**  parcor_coef;
   int32_t** parcor_coef_int32;
@@ -89,7 +88,6 @@ int do_encode(const char* in_filename, const char* out_filename)
   /* 分析合成ハンドル作成 */
   lpcc = ALALPCCalculator_Create(ALA_PARCOR_ORDER);
   lpcs = ALALPCSynthesizer_Create(ALA_PARCOR_ORDER);
-  emp  = ALAEmphasisFilter_Create();
 
   /* 残差符号化ハンドル作成 */
   coder = ALACoder_Create(num_channels);
@@ -176,10 +174,8 @@ int do_encode(const char* in_filename, const char* out_filename)
     /* 残差計算 */
     /* プリエンファシスフィルタ */
     for (ch = 0; ch < num_channels; ch++) {
-      ALAEmphasisFilter_Reset(emp);
-      if (ALAEmphasisFilter_PreEmphasisInt32(emp, 
-            &input_int32[ch][enc_offset_sample], num_encode_samples,
-            ALA_EMPHASIS_FILTER_SHIFT) != ALAPREDICTOR_APIRESULT_OK) {
+      if (ALAEmphasisFilter_PreEmphasisInt32(&input_int32[ch][enc_offset_sample],
+            num_encode_samples, ALA_EMPHASIS_FILTER_SHIFT) != ALAPREDICTOR_APIRESULT_OK) {
         fprintf(stderr, "Failed to apply pre-emphasis. \n");
         return 1;
       }
@@ -245,7 +241,6 @@ int do_encode(const char* in_filename, const char* out_filename)
   /* ハンドル破棄 */
   ALALPCCalculator_Destroy(lpcc);
   ALALPCSynthesizer_Destroy(lpcs);
-  ALAEmphasisFilter_Destroy(emp);
   ALACoder_Destroy(coder);
   WAV_Destroy(in_wav);
   BitStream_Close(out_strm);
@@ -260,7 +255,6 @@ int do_decode(const char* in_filename, const char* out_filename)
   struct WAVFile*           out_wav;
   struct WAVFileFormat      wav_format;
   struct ALALPCSynthesizer* lpcs;
-  struct ALAEmphasisFilter* emp;
   struct ALACoder*          coder;
   uint32_t  ch, smpl, ord;
   uint64_t  bitsbuf;
@@ -342,7 +336,6 @@ int do_decode(const char* in_filename, const char* out_filename)
 
   /* 合成ハンドル作成 */
   lpcs  = ALALPCSynthesizer_Create(parcor_order);
-  emp   = ALAEmphasisFilter_Create();
 
   /* 残差復号ハンドル作成 */
   coder = ALACoder_Create(num_channels);
@@ -389,10 +382,8 @@ int do_decode(const char* in_filename, const char* out_filename)
     }
     /* デエンファシスフィルタ */
     for (ch = 0; ch < num_channels; ch++) {
-      ALAEmphasisFilter_Reset(emp);
-      if (ALAEmphasisFilter_DeEmphasisInt32(emp,
-            output[ch], num_decode_samples,
-            ALA_EMPHASIS_FILTER_SHIFT) != ALAPREDICTOR_APIRESULT_OK) {
+      if (ALAEmphasisFilter_DeEmphasisInt32(output[ch],
+            num_decode_samples, ALA_EMPHASIS_FILTER_SHIFT) != ALAPREDICTOR_APIRESULT_OK) {
         fprintf(stderr, "Failed to apply de-emphasis. \n");
         return 1;
       }

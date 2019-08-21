@@ -380,44 +380,8 @@ ALAPredictorApiResult ALALPCSynthesizer_SynthesizeByParcorCoefInt32(
   return ALAPREDICTOR_APIRESULT_OK;
 }
 
-/* エンファシスフィルタの作成 */
-struct ALAEmphasisFilter* ALAEmphasisFilter_Create(void)
-{
-  struct ALAEmphasisFilter* emp;
-
-  emp = (struct ALAEmphasisFilter *)malloc(sizeof(struct ALAEmphasisFilter));
-
-  if (ALAEmphasisFilter_Reset(emp) != ALAPREDICTOR_APIRESULT_OK) {
-    free(emp);
-    return NULL;
-  }
-
-  return emp;
-}
-
-/* エンファシスフィルタの破棄 */
-void ALAEmphasisFilter_Destroy(struct ALAEmphasisFilter* emp)
-{
-  if (emp != NULL) {
-    free(emp);
-  }
-}
-
-/* エンファシスフィルタのリセット */
-ALAPredictorApiResult ALAEmphasisFilter_Reset(struct ALAEmphasisFilter* emp)
-{
-  if (emp == NULL) {
-    return ALAPREDICTOR_APIRESULT_OK;
-  }
-
-  emp->prev_int32 = 0;
-
-  return ALAPREDICTOR_APIRESULT_OK;
-}
-
-/* プリエンファシス(int32) */
+/* プリエンファシス(int32, in-place) */
 ALAPredictorApiResult ALAEmphasisFilter_PreEmphasisInt32(
-    struct ALAEmphasisFilter* emp,
     int32_t* data, uint32_t num_samples, int32_t coef_shift)
 {
   uint32_t  smpl;
@@ -425,57 +389,53 @@ ALAPredictorApiResult ALAEmphasisFilter_PreEmphasisInt32(
   const int32_t coef_numer = (int32_t)((1 << coef_shift) - 1);
 
   /* 引数チェック */
-  if ((emp == NULL) || (data == NULL)) {
+  if (data == NULL) {
     return ALAPREDICTOR_APIRESULT_INVALID_ARGUMENT;
   }
 
   /* フィルタ適用 */
-  prev_int32 = emp->prev_int32;
+  prev_int32 = 0;
   for (smpl = 0; smpl < num_samples; smpl++) {
     tmp_int32   = data[smpl];
     data[smpl] -= (int32_t)ALAUTILITY_SHIFT_RIGHT_ARITHMETIC(prev_int32 * coef_numer, coef_shift);
     prev_int32  = tmp_int32;
   }
 
-  /* 直前の値を保存 */
-  emp->prev_int32 = prev_int32;
   return ALAPREDICTOR_APIRESULT_OK;
 }
 
-/* デエンファシス(int32) */
+/* デエンファシス(int32, in-place) */
 ALAPredictorApiResult ALAEmphasisFilter_DeEmphasisInt32(
-    struct ALAEmphasisFilter* emp,
     int32_t* data, uint32_t num_samples, int32_t coef_shift)
 {
   uint32_t  smpl;
   const int32_t coef_numer = (int32_t)((1 << coef_shift) - 1);
 
   /* 引数チェック */
-  if ((emp == NULL) || (data == NULL)) {
+  if (data == NULL) {
     return ALAPREDICTOR_APIRESULT_INVALID_ARGUMENT;
   }
-
-  /* 先頭サンプルはハンドルにある直前の値を使用 */
-  data[0] += (int32_t)ALAUTILITY_SHIFT_RIGHT_ARITHMETIC(emp->prev_int32 * coef_numer, coef_shift);
 
   /* フィルタ適用 */
   for (smpl = 1; smpl < num_samples; smpl++) {
     data[smpl] += (int32_t)ALAUTILITY_SHIFT_RIGHT_ARITHMETIC(data[smpl - 1] * coef_numer, coef_shift);
   }
 
-  /* 直前の値を保存 */
-  emp->prev_int32 = data[smpl - 1];
   return ALAPREDICTOR_APIRESULT_OK;
 }
 
 /* プリエンファシス(double, in-place) */
-void ALAEmphasisFilter_PreEmphasisDouble(double* data, uint32_t num_samples, int32_t coef_shift)
+ALAPredictorApiResult ALAEmphasisFilter_PreEmphasisDouble(
+    double* data, uint32_t num_samples, int32_t coef_shift)
 {
   uint32_t  smpl;
   double    prev, tmp;
   double    coef;
 
-  assert(data != NULL);
+  /* 引数チェック */
+  if (data == NULL) {
+    return ALAPREDICTOR_APIRESULT_INVALID_ARGUMENT;
+  }
 
   /* フィルタ係数の計算 */
   coef = (pow(2.0f, (double)coef_shift) - 1.0f) * pow(2.0f, (double)-coef_shift);
@@ -488,4 +448,5 @@ void ALAEmphasisFilter_PreEmphasisDouble(double* data, uint32_t num_samples, int
     prev        = tmp;
   }
 
+  return ALAPREDICTOR_APIRESULT_OK;
 }

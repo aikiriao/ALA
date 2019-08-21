@@ -60,27 +60,17 @@ ALAPredictorApiResult ALALPCSynthesizer_SynthesizeByParcorCoefInt32(
     const int32_t* parcor_coef, uint32_t order,
     int32_t* output);
 
-/* エンファシスフィルタの作成 */
-struct ALAEmphasisFilter* ALAEmphasisFilter_Create(void);
-
-/* エンファシスフィルタのリセット */
-ALAPredictorApiResult ALAEmphasisFilter_Reset(struct ALAEmphasisFilter* emp);
-
-/* エンファシスフィルタの破棄 */
-void ALAEmphasisFilter_Destroy(struct ALAEmphasisFilter* emp);
-
-/* プリエンファシス(int32) */
+/* プリエンファシス(int32, in-place) */
 ALAPredictorApiResult ALAEmphasisFilter_PreEmphasisInt32(
-    struct ALAEmphasisFilter* emp,
     int32_t* data, uint32_t num_samples, int32_t coef_shift);
 
-/* デエンファシス(int32) */
+/* デエンファシス(int32, in-place) */
 ALAPredictorApiResult ALAEmphasisFilter_DeEmphasisInt32(
-    struct ALAEmphasisFilter* emp,
     int32_t* data, uint32_t num_samples, int32_t coef_shift);
 
-/* プリエンファシス(double, 解析用) */
-void ALAEmphasisFilter_PreEmphasisDouble(double* data, uint32_t num_samples, int32_t coef_shift);
+/* プリエンファシス(double, in-place) */
+ALAPredictorApiResult ALAEmphasisFilter_PreEmphasisDouble(
+    double* data, uint32_t num_samples, int32_t coef_shift);
 
 #ifdef __cplusplus
 }
