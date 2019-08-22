@@ -48,15 +48,6 @@ uint32_t ALAUtility_Log2Floor(uint32_t val);
 /* 2の冪乗に切り上げる */
 uint32_t ALAUtility_RoundUp2Powered(uint32_t val);
 
-/* LR -> MS（double） */
-void ALAUtility_LRtoMSDouble(double **data, uint32_t num_channels, uint32_t num_samples);
-
-/* LR -> MS（int32_t） */
-void ALAUtility_LRtoMSInt32(int32_t **data, uint32_t num_channels, uint32_t num_samples);
-
-/* MS -> LR（int32_t） */
-void ALAUtility_MStoLRInt32(int32_t **data, uint32_t num_channels, uint32_t num_samples);
-
 /* round関数（C89で定義されてない） */
 double ALAUtility_Round(double d);
 
