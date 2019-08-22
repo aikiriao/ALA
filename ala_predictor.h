@@ -64,13 +64,13 @@ ALAPredictorApiResult ALALPCSynthesizer_SynthesizeByParcorCoefInt32(
 ALAPredictorApiResult ALAEmphasisFilter_PreEmphasisInt32(
     int32_t* data, uint32_t num_samples, int32_t coef_shift);
 
-/* デエンファシス(int32, in-place) */
-ALAPredictorApiResult ALAEmphasisFilter_DeEmphasisInt32(
-    int32_t* data, uint32_t num_samples, int32_t coef_shift);
-
 /* プリエンファシス(double, in-place) */
 ALAPredictorApiResult ALAEmphasisFilter_PreEmphasisDouble(
     double* data, uint32_t num_samples, int32_t coef_shift);
+
+/* デエンファシス(int32, in-place) */
+ALAPredictorApiResult ALAEmphasisFilter_DeEmphasisInt32(
+    int32_t* data, uint32_t num_samples, int32_t coef_shift);
 
 #ifdef __cplusplus
 }
