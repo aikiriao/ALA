@@ -16,47 +16,50 @@
 #define ALACODER_FIXED_FLOAT_TO_UINT32(fixed)   (uint32_t)(((fixed) + (ALACODER_FIXED_FLOAT_0_5)) >> (ALACODER_NUM_FRACTION_PART_BITS))
 /* Rice符号のパラメータ更新 */
 /* 指数平滑平均により平均値を推定 */
-#define ALARICE_PARAMETER_UPDATE(param, code) {\
-  (param) = (ALARecursiveRiceParameter)(119 * (param) + 9 * ALACODER_UINT32_TO_FIXED_FLOAT(code) + (1UL << 6)) >> 7; \
+#define ALACODER_UPDATE_RICE_PARAMETER(param, code) {\
+  (param) = (ALAFixedFloatRiceParameter)(119 * (param) + 9 * ALACODER_UINT32_TO_FIXED_FLOAT(code) + (1UL << 6)) >> 7; \
 }
 /* Rice符号のパラメータ計算 2 ** ceil(log2(E(x)/2)) = E(x)/2の2の冪乗切り上げ */
-#define ALARICE_CALCULATE_RICE_PARAMETER(param) \
+#define ALACODER_CALCULATE_RICE_PARAMETER(param) \
   ALAUtility_RoundUp2Powered(ALAUTILITY_MAX(ALACODER_FIXED_FLOAT_TO_UINT32((param) >> 1), 1UL))
 
-/* 再帰的ライス符号パラメータ型 */
-typedef uint64_t ALARecursiveRiceParameter;
+/* Rice符号固定小数点パラメータ型 */
+typedef uint64_t ALAFixedFloatRiceParameter;
 
-/* 符号化ハンドル */
+/* 符号化/復号ハンドル */
 struct ALACoder {
-  ALARecursiveRiceParameter* rice_parameter;
-  uint32_t                   max_num_channels;
+  ALAFixedFloatRiceParameter* rice_parameter;
+  uint32_t                    max_num_channels;
 };
 
 /* 再帰的ライス符号の出力 */
-static void ALARecursiveRice_PutCode(
-    struct BitStream* strm, ALARecursiveRiceParameter rice_parameter, uint32_t val)
+static void ALACoder_PutRiceCode(
+    struct BitStream* strm, ALAFixedFloatRiceParameter rice_parameter, uint32_t val)
 {
-  uint32_t i, param, quot;
+  uint32_t i, param, quot, rest;
 
   assert(strm != NULL);
 
   /* Rice符号のパラメータ取得 */
-  param = ALARICE_CALCULATE_RICE_PARAMETER(rice_parameter);
+  param = ALACODER_CALCULATE_RICE_PARAMETER(rice_parameter);
+
+  /* 商と剰余の計算 */
+  quot = val >> ALAUtility_Log2Ceil(param);
+  rest = val & (param - 1);
 
   /* 商部分の出力 */
-  quot = val >> ALAUtility_Log2Ceil(param);
   for (i = 0; i < quot; i++) {
     BitStream_PutBit(strm, 0);
   }
   BitStream_PutBit(strm, 1);
 
   /* 剰余部分の出力 */
-  BitStream_PutBits(strm, ALAUtility_Log2Ceil(param), val & (param - 1));
+  BitStream_PutBits(strm, ALAUtility_Log2Ceil(param), rest);
 }
 
 /* 再帰的ライス符号の取得 */
-static uint32_t ALARecursiveRice_GetCode(
-    struct BitStream* strm, ALARecursiveRiceParameter rice_parameter)
+static uint32_t ALACoder_GetRiceCode(
+    struct BitStream* strm, ALAFixedFloatRiceParameter rice_parameter)
 {
   uint32_t  quot, rest;
   uint32_t  param;
@@ -65,7 +68,7 @@ static uint32_t ALARecursiveRice_GetCode(
   assert(strm != NULL);
   
   /* ライス符号のパラメータを取得 */
-  param = ALARICE_CALCULATE_RICE_PARAMETER(rice_parameter);
+  param = ALACODER_CALCULATE_RICE_PARAMETER(rice_parameter);
 
   /* 商部分を取得 */
   quot = 0;
@@ -75,6 +78,7 @@ static uint32_t ALARecursiveRice_GetCode(
     BitStream_GetBit(strm, &bit);
   }
 
+  /* 剰余部分を取得 */
   if (param == 1) {
     /* 1の剰余は0 */
     rest = 0;
@@ -96,7 +100,8 @@ struct ALACoder* ALACoder_Create(uint32_t max_num_channels)
   coder = (struct ALACoder *)malloc(sizeof(struct ALACoder));
   coder->max_num_channels   = max_num_channels;
 
-  coder->rice_parameter = (ALARecursiveRiceParameter *)malloc(sizeof(ALARecursiveRiceParameter) * max_num_channels);
+  coder->rice_parameter
+    = (ALAFixedFloatRiceParameter *)malloc(sizeof(ALAFixedFloatRiceParameter) * max_num_channels);
 
   return coder;
 }
@@ -131,15 +136,15 @@ void ALACoder_PutDataArray(
     coder->rice_parameter[ch] = ALACODER_UINT32_TO_FIXED_FLOAT(mean_uint);
   }
 
-  /* チャンネルインターリーブしつつ符号化 */
-  for (smpl = 0; smpl < num_samples; smpl++) {
-    for (ch = 0; ch < num_channels; ch++) {
+  /* 各チャンネル毎に符号化 */
+  for (ch = 0; ch < num_channels; ch++) {
+    for (smpl = 0; smpl < num_samples; smpl++) {
       /* 正整数に変換 */
       uint = ALAUTILITY_SINT32_TO_UINT32(data[ch][smpl]);
       /* ライス符号化 */
-      ALARecursiveRice_PutCode(strm, coder->rice_parameter[ch], uint);
+      ALACoder_PutRiceCode(strm, coder->rice_parameter[ch], uint);
       /* パラメータを適応的に変更 */
-      ALARICE_PARAMETER_UPDATE(coder->rice_parameter[ch], uint);
+      ALACODER_UPDATE_RICE_PARAMETER(coder->rice_parameter[ch], uint);
     }
   }
 
@@ -161,13 +166,13 @@ void ALACoder_GetDataArray(
     coder->rice_parameter[ch] = ALACODER_UINT32_TO_FIXED_FLOAT(bitsbuf);
   }
 
-  /* チャンネルインターリーブで復号 */
-  for (smpl = 0; smpl < num_samples; smpl++) {
-    for (ch = 0; ch < num_channels; ch++) {
+  /* 各チャンネル毎に復号 */
+  for (ch = 0; ch < num_channels; ch++) {
+    for (smpl = 0; smpl < num_samples; smpl++) {
       /* ライス符号化 */
-      uint = ALARecursiveRice_GetCode(strm, coder->rice_parameter[ch]);
+      uint = ALACoder_GetRiceCode(strm, coder->rice_parameter[ch]);
       /* パラメータを適応的に変更 */
-      ALARICE_PARAMETER_UPDATE(coder->rice_parameter[ch], uint);
+      ALACODER_UPDATE_RICE_PARAMETER(coder->rice_parameter[ch], uint);
       /* 整数に変換 */
       data[ch][smpl] = ALAUTILITY_UINT32_TO_SINT32(uint);
     }
