@@ -128,11 +128,9 @@ void ALAUtility_LRtoMSInt32(int32_t **data,
   ALAUTILITY_UNUSED_ARGUMENT(num_channels); 
 
   for (smpl = 0; smpl < num_samples; smpl++) {
-    mid   = (data[0][smpl] + data[1][smpl]) >> 1; /* 注意: 右シフト必須(/2ではだめ。0方向に丸められる) */
+    /* 注意: 除算は右シフト必須(/2ではだめ。0方向に丸められる) */
+    mid   = (data[0][smpl] + data[1][smpl]) >> 1; 
     side  = data[0][smpl] - data[1][smpl];
-    /* 戻るかその場で確認 */
-    assert(data[0][smpl] == ((((mid << 1) | (side & 1)) + side) >> 1));
-    assert(data[1][smpl] == ((((mid << 1) | (side & 1)) - side) >> 1));
     data[0][smpl] = mid; 
     data[1][smpl] = side;
   }
@@ -159,7 +157,7 @@ void ALAUtility_MStoLRInt32(int32_t **data,
   }
 }
 
-/* round関数（C89で定義されてない） */
+/* round関数（C89で定義されてないため自己定義） */
 double ALAUtility_Round(double d)
 {
     return (d >= 0.0f) ? floor(d + 0.5f) : -floor(-d + 0.5f);
