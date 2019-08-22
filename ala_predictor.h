@@ -72,6 +72,18 @@ ALAPredictorApiResult ALAEmphasisFilter_PreEmphasisDouble(
 ALAPredictorApiResult ALAEmphasisFilter_DeEmphasisInt32(
     int32_t* data, uint32_t num_samples, int32_t coef_shift);
 
+/* LR -> MS（double） */
+void ALAChannelDecorrelator_LRtoMSDouble(
+    double **data, uint32_t num_channels, uint32_t num_samples);
+
+/* LR -> MS（int32_t） */
+void ALAChannelDecorrelator_LRtoMSInt32(
+    int32_t **data, uint32_t num_channels, uint32_t num_samples);
+
+/* MS -> LR（int32_t） */
+void ALAChannelDecorrelator_MStoLRInt32(
+    int32_t **data, uint32_t num_channels, uint32_t num_samples);
+
 #ifdef __cplusplus
 }
 #endif

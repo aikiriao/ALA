@@ -110,8 +110,8 @@ int do_encode(const char* in_filename, const char* out_filename)
 
   /* ステレオチャンネル以上ならばMS処理を行う */
   if (num_channels >= 2) {
-    ALAUtility_LRtoMSDouble(input, num_channels, num_samples);
-    ALAUtility_LRtoMSInt32(input_int32, num_channels, num_samples);
+    ALAChannelDecorrelator_LRtoMSDouble(input, num_channels, num_samples);
+    ALAChannelDecorrelator_LRtoMSInt32(input_int32, num_channels, num_samples);
   }
 
   /* ヘッダの書き出し */
@@ -397,7 +397,7 @@ int do_decode(const char* in_filename, const char* out_filename)
 
     /* MS処理をしていたら元に戻す */
     if (num_channels >= 2) {
-      ALAUtility_MStoLRInt32(output, num_channels, num_decode_samples);
+      ALAChannelDecorrelator_MStoLRInt32(output, num_channels, num_decode_samples);
     }
 
     /* エンコード時に右シフトした分を戻す */
