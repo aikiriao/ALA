@@ -1,10 +1,10 @@
 CC 		    = gcc
 CFLAGS 	  = -std=c89 -Wall -Wextra -Wpedantic -Wformat=2 -Wconversion -O0 -g3
-CPPFLAGS	= -DNDEBUG
+CPPFLAGS	= -DDEBUG
 LDFLAGS		= -Wall -Wextra -Wpedantic
 LDLIBS		= -lm
 OBJS	 		= main.o wav.o bit_stream.o ala_coder.o ala_predictor.o ala_utility.o 
-TARGET    = alac
+TARGET    = ala
 
 all: $(TARGET) 
 
