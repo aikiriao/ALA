@@ -280,7 +280,7 @@ void ALALPCSynthesizer_Destroy(struct ALALPCSynthesizer* lpc)
   }
 }
 
-/* PARCOR係数により予測/誤差出力（32bit整数入出力）: 乗算時に32bit幅になるように修正 */
+/* PARCOR係数により予測/誤差出力（32bit整数入出力） */
 ALAPredictorApiResult ALALPCSynthesizer_PredictByParcorCoefInt32(
     struct ALALPCSynthesizer* lpc,
     const int32_t* data, uint32_t num_samples,
@@ -290,7 +290,8 @@ ALAPredictorApiResult ALALPCSynthesizer_PredictByParcorCoefInt32(
   int32_t*      forward_residual;
   int32_t*      backward_residual;
   int32_t       mul_temp;
-  const int32_t half = (1UL << 14);
+  /* 丸め誤差軽減のための加算定数 = 0.5 */
+  const int32_t half = (1UL << 14); 
 
   /* 引数チェック */
   if (lpc == NULL || data == NULL
