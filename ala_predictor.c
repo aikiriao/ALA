@@ -453,39 +453,45 @@ ALAPredictorApiResult ALAEmphasisFilter_PreEmphasisDouble(
 }
 
 /* LR -> MS（double） */
-void ALAChannelDecorrelator_LRtoMSDouble(double **data,
+ALAPredictorApiResult ALAChannelDecorrelator_LRtoMSDouble(double **data,
     uint32_t num_channels, uint32_t num_samples)
 {
   uint32_t  smpl;
   double    mid, side;
 
-  assert(data != NULL);
-  assert(data[0] != NULL);
-  assert(data[1] != NULL);
-  assert(num_channels >= 2);
-  ALAUTILITY_UNUSED_ARGUMENT(num_channels);
+  /* 引数チェック */
+  if ((data != NULL)
+      || (data[0] != NULL) || (data[1] != NULL)
+      || (num_channels < 2)) {
+    return ALAPREDICTOR_APIRESULT_INVALID_ARGUMENT;
+  }
 
+  /* サンプル単位でLR -> MS処理 */
   for (smpl = 0; smpl < num_samples; smpl++) {
     mid   = (data[0][smpl] + data[1][smpl]) / 2;
     side  = data[0][smpl] - data[1][smpl];
     data[0][smpl] = mid; 
     data[1][smpl] = side;
   }
+
+  return ALAPREDICTOR_APIRESULT_OK;
 }
 
 /* LR -> MS（int32_t） */
-void ALAChannelDecorrelator_LRtoMSInt32(int32_t **data, 
+ALAPredictorApiResult ALAChannelDecorrelator_LRtoMSInt32(int32_t **data, 
     uint32_t num_channels, uint32_t num_samples)
 {
   uint32_t  smpl;
   int32_t   mid, side;
 
-  assert(data != NULL);
-  assert(data[0] != NULL);
-  assert(data[1] != NULL);
-  assert(num_channels >= 2);
-  ALAUTILITY_UNUSED_ARGUMENT(num_channels); 
+  /* 引数チェック */
+  if ((data != NULL)
+      || (data[0] != NULL) || (data[1] != NULL)
+      || (num_channels < 2)) {
+    return ALAPREDICTOR_APIRESULT_INVALID_ARGUMENT;
+  }
 
+  /* サンプル単位でLR -> MS処理 */
   for (smpl = 0; smpl < num_samples; smpl++) {
     /* 注意: 除算は右シフト必須(/2ではだめ。0方向に丸められる) */
     mid   = (data[0][smpl] + data[1][smpl]) >> 1; 
@@ -493,25 +499,31 @@ void ALAChannelDecorrelator_LRtoMSInt32(int32_t **data,
     data[0][smpl] = mid; 
     data[1][smpl] = side;
   }
+
+  return ALAPREDICTOR_APIRESULT_OK;
 }
 
 /* MS -> LR（int32_t） */
-void ALAChannelDecorrelator_MStoLRInt32(int32_t **data, 
+ALAPredictorApiResult ALAChannelDecorrelator_MStoLRInt32(int32_t **data, 
     uint32_t num_channels, uint32_t num_samples)
 {
   uint32_t  smpl;
   int32_t   mid, side;
 
-  assert(data != NULL);
-  assert(data[0] != NULL);
-  assert(data[1] != NULL);
-  assert(num_channels >= 2);
-  ALAUTILITY_UNUSED_ARGUMENT(num_channels);
+  /* 引数チェック */
+  if ((data != NULL)
+      || (data[0] != NULL) || (data[1] != NULL)
+      || (num_channels < 2)) {
+    return ALAPREDICTOR_APIRESULT_INVALID_ARGUMENT;
+  }
 
+  /* サンプル単位でMS -> LR処理 */
   for (smpl = 0; smpl < num_samples; smpl++) {
     side  = data[1][smpl];
     mid   = (data[0][smpl] << 1) | (side & 1);
     data[0][smpl] = (mid + side) >> 1;
     data[1][smpl] = (mid - side) >> 1;
   }
+
+  return ALAPREDICTOR_APIRESULT_OK;
 }
