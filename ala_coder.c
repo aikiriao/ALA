@@ -15,8 +15,8 @@
 /* 固定小数を符号なし整数に変換 */
 #define ALACODER_FIXED_FLOAT_TO_UINT32(fixed)   (uint32_t)(((fixed) + (ALACODER_FIXED_FLOAT_0_5)) >> (ALACODER_NUM_FRACTION_PART_BITS))
 /* Rice符号のパラメータ更新用マクロ */
-/* 指数平滑平均により平均値を更新 */
-#define ALACODER_UPDATE_MEAN(mean, uint) {\
+/* 指数平滑平均により推定平均値を更新 */
+#define ALACODER_UPDATE_ESTIMATED_MEAN(mean, uint) {\
   (mean) = (ALACoderFixedFloat)(119 * (mean) + 9 * ALACODER_UINT32_TO_FIXED_FLOAT(uint) + (1UL << 6)) >> 7; \
 }
 /* Rice符号のパラメータ計算 2 ** ceil(log2(E(x)/2)) = E(x)/2の2の冪乗切り上げ */
@@ -137,7 +137,7 @@ void ALACoder_PutDataArray(
       /* ライス符号化 */
       ALACoder_PutRiceCode(strm, ALACODER_CALCULATE_RICE_PARAMETER(coder->estimated_mean[ch]), uint);
       /* 推定平均値を更新 */
-      ALACODER_UPDATE_MEAN(coder->estimated_mean[ch], uint);
+      ALACODER_UPDATE_ESTIMATED_MEAN(coder->estimated_mean[ch], uint);
     }
   }
 }
@@ -164,7 +164,7 @@ void ALACoder_GetDataArray(
       /* ライス符号を復号 */
       uint = ALACoder_GetRiceCode(strm, ALACODER_CALCULATE_RICE_PARAMETER(coder->estimated_mean[ch]));
       /* 推定平均値を更新 */
-      ALACODER_UPDATE_MEAN(coder->estimated_mean[ch], uint);
+      ALACODER_UPDATE_ESTIMATED_MEAN(coder->estimated_mean[ch], uint);
       /* 符号付き整数に変換 */
       data[ch][smpl] = ALAUTILITY_UINT32_TO_SINT32(uint);
     }
