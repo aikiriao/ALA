@@ -32,20 +32,17 @@ struct ALACoder {
   uint32_t                    max_num_channels;
 };
 
-/* 再帰的ライス符号の出力 */
+/* ライス符号の出力 */
 static void ALACoder_PutRiceCode(
-    struct BitStream* strm, ALAFixedFloatRiceParameter rice_parameter, uint32_t val)
+    struct BitStream* strm, uint32_t rice_parameter, uint32_t val)
 {
-  uint32_t i, param, quot, rest;
+  uint32_t i, quot, rest;
 
   assert(strm != NULL);
 
-  /* Rice符号のパラメータ取得 */
-  param = ALACODER_CALCULATE_RICE_PARAMETER(rice_parameter);
-
   /* 商と剰余の計算 */
-  quot = val >> ALAUtility_Log2Ceil(param);
-  rest = val & (param - 1);
+  quot = val >> ALAUtility_Log2Ceil(rice_parameter);
+  rest = val & (rice_parameter - 1);
 
   /* 商部分の出力 */
   for (i = 0; i < quot; i++) {
@@ -54,22 +51,18 @@ static void ALACoder_PutRiceCode(
   BitStream_PutBit(strm, 1);
 
   /* 剰余部分の出力 */
-  BitStream_PutBits(strm, ALAUtility_Log2Ceil(param), rest);
+  BitStream_PutBits(strm, ALAUtility_Log2Ceil(rice_parameter), rest);
 }
 
-/* 再帰的ライス符号の取得 */
+/* ライス符号の取得 */
 static uint32_t ALACoder_GetRiceCode(
-    struct BitStream* strm, ALAFixedFloatRiceParameter rice_parameter)
+    struct BitStream* strm, uint32_t rice_parameter)
 {
   uint32_t  quot, rest;
-  uint32_t  param;
   uint8_t   bit;
 
   assert(strm != NULL);
   
-  /* ライス符号のパラメータを取得 */
-  param = ALACODER_CALCULATE_RICE_PARAMETER(rice_parameter);
-
   /* 商部分を取得 */
   quot = 0;
   BitStream_GetBit(strm, &bit);
@@ -79,17 +72,17 @@ static uint32_t ALACoder_GetRiceCode(
   }
 
   /* 剰余部分を取得 */
-  if (param == 1) {
+  if (rice_parameter == 1) {
     /* 1の剰余は0 */
     rest = 0;
   } else {
     /* ライス符号の剰余部分取得 */
     uint64_t bitsbuf;
-    BitStream_GetBits(strm, ALAUtility_Log2Ceil(param), &bitsbuf);
+    BitStream_GetBits(strm, ALAUtility_Log2Ceil(rice_parameter), &bitsbuf);
     rest = (uint32_t)bitsbuf;
   }
 
-  return (param * quot + rest);
+  return (rice_parameter * quot + rest);
 }
 
 /* 符号化ハンドルの作成 */
@@ -139,15 +132,14 @@ void ALACoder_PutDataArray(
   /* 各チャンネル毎に符号化 */
   for (ch = 0; ch < num_channels; ch++) {
     for (smpl = 0; smpl < num_samples; smpl++) {
-      /* 正整数に変換 */
+      /* 符号なし整数に変換 */
       uint = ALAUTILITY_SINT32_TO_UINT32(data[ch][smpl]);
       /* ライス符号化 */
-      ALACoder_PutRiceCode(strm, coder->rice_parameter[ch], uint);
+      ALACoder_PutRiceCode(strm, ALACODER_CALCULATE_RICE_PARAMETER(coder->rice_parameter[ch]), uint);
       /* パラメータを適応的に変更 */
       ALACODER_UPDATE_RICE_PARAMETER(coder->rice_parameter[ch], uint);
     }
   }
-
 }
 
 /* 符号付き整数配列の復号 */
@@ -169,11 +161,11 @@ void ALACoder_GetDataArray(
   /* 各チャンネル毎に復号 */
   for (ch = 0; ch < num_channels; ch++) {
     for (smpl = 0; smpl < num_samples; smpl++) {
-      /* ライス符号化 */
-      uint = ALACoder_GetRiceCode(strm, coder->rice_parameter[ch]);
+      /* ライス符号を復号 */
+      uint = ALACoder_GetRiceCode(strm, ALACODER_CALCULATE_RICE_PARAMETER(coder->rice_parameter[ch]));
       /* パラメータを適応的に変更 */
       ALACODER_UPDATE_RICE_PARAMETER(coder->rice_parameter[ch], uint);
-      /* 整数に変換 */
+      /* 符号付き整数に変換 */
       data[ch][smpl] = ALAUTILITY_UINT32_TO_SINT32(uint);
     }
   }
