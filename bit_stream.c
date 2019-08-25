@@ -275,7 +275,6 @@ BitStreamApiResult BitStream_GetBit(struct BitStream* stream, uint8_t* bit)
   if (stream->bit_count > 0) {
     stream->bit_count--;
     (*bit) = (stream->bit_buffer >> stream->bit_count) & 1;
-    /* (*bit) = (stream->bit_buffer & st_bit_mask[stream->bit_count]); */
     return BITSTREAM_APIRESULT_OK;
   }
 
@@ -343,7 +342,7 @@ BitStreamApiResult BitStream_GetBits(struct BitStream* stream, uint32_t n_bits, 
 
 END_OF_STREAM:
   /* 端数ビットの処理 
-   * 残ったビット分をtmpの最上位ビットにセット */
+   * 残ったビット分をtmpの最下位ビットにセット */
   stream->bit_count -= n_bits;
   tmp               |= (uint64_t)BITSTREAM_GETLOWERBITS(n_bits, (uint32_t)(stream->bit_buffer >> stream->bit_count));
 
