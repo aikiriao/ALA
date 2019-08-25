@@ -136,7 +136,7 @@ void ALACoder_PutDataArray(
       uint = ALAUTILITY_SINT32_TO_UINT32(data[ch][smpl]);
       /* ライス符号化 */
       ALACoder_PutRiceCode(strm, ALACODER_CALCULATE_RICE_PARAMETER(coder->mean[ch]), uint);
-      /* パラメータを適応的に変更 */
+      /* 推定平均値を更新 */
       ALACODER_UPDATE_MEAN(coder->mean[ch], uint);
     }
   }
@@ -163,7 +163,7 @@ void ALACoder_GetDataArray(
     for (smpl = 0; smpl < num_samples; smpl++) {
       /* ライス符号を復号 */
       uint = ALACoder_GetRiceCode(strm, ALACODER_CALCULATE_RICE_PARAMETER(coder->mean[ch]));
-      /* パラメータを適応的に変更 */
+      /* 推定平均値を更新 */
       ALACODER_UPDATE_MEAN(coder->mean[ch], uint);
       /* 符号付き整数に変換 */
       data[ch][smpl] = ALAUTILITY_UINT32_TO_SINT32(uint);
