@@ -28,7 +28,7 @@ typedef uint64_t ALACoderFixedFloat;
 
 /* 符号化/復号ハンドル */
 struct ALACoder {
-   ALACoderFixedFloat* mean;
+  ALACoderFixedFloat* estimated_mean;
   uint32_t            max_num_channels;
 };
 
@@ -93,7 +93,7 @@ struct ALACoder* ALACoder_Create(uint32_t max_num_channels)
   coder = (struct ALACoder *)malloc(sizeof(struct ALACoder));
   coder->max_num_channels   = max_num_channels;
 
-  coder->mean
+  coder->estimated_mean
     = (ALACoderFixedFloat *)malloc(sizeof(ALACoderFixedFloat) * max_num_channels);
 
   return coder;
@@ -103,7 +103,7 @@ struct ALACoder* ALACoder_Create(uint32_t max_num_channels)
 void ALACoder_Destroy(struct ALACoder* coder)
 {
   if (coder != NULL) {
-    free(coder->mean);
+    free(coder->estimated_mean);
     free(coder);
   }
 }
@@ -126,7 +126,7 @@ void ALACoder_PutDataArray(
     mean_uint /= num_samples;
     assert(mean_uint < (1UL << 16));
     BitStream_PutBits(strm, 16, mean_uint);
-    coder->mean[ch] = ALACODER_UINT32_TO_FIXED_FLOAT(mean_uint);
+    coder->estimated_mean[ch] = ALACODER_UINT32_TO_FIXED_FLOAT(mean_uint);
   }
 
   /* 各チャンネル毎に符号化 */
@@ -135,9 +135,9 @@ void ALACoder_PutDataArray(
       /* 符号なし整数に変換 */
       uint = ALAUTILITY_SINT32_TO_UINT32(data[ch][smpl]);
       /* ライス符号化 */
-      ALACoder_PutRiceCode(strm, ALACODER_CALCULATE_RICE_PARAMETER(coder->mean[ch]), uint);
+      ALACoder_PutRiceCode(strm, ALACODER_CALCULATE_RICE_PARAMETER(coder->estimated_mean[ch]), uint);
       /* 推定平均値を更新 */
-      ALACODER_UPDATE_MEAN(coder->mean[ch], uint);
+      ALACODER_UPDATE_MEAN(coder->estimated_mean[ch], uint);
     }
   }
 }
@@ -155,16 +155,16 @@ void ALACoder_GetDataArray(
   for (ch = 0; ch < num_channels; ch++) {
     uint64_t bitsbuf;
     BitStream_GetBits(strm, 16, &bitsbuf);
-    coder->mean[ch] = ALACODER_UINT32_TO_FIXED_FLOAT(bitsbuf);
+    coder->estimated_mean[ch] = ALACODER_UINT32_TO_FIXED_FLOAT(bitsbuf);
   }
 
   /* 各チャンネル毎に復号 */
   for (ch = 0; ch < num_channels; ch++) {
     for (smpl = 0; smpl < num_samples; smpl++) {
       /* ライス符号を復号 */
-      uint = ALACoder_GetRiceCode(strm, ALACODER_CALCULATE_RICE_PARAMETER(coder->mean[ch]));
+      uint = ALACoder_GetRiceCode(strm, ALACODER_CALCULATE_RICE_PARAMETER(coder->estimated_mean[ch]));
       /* 推定平均値を更新 */
-      ALACODER_UPDATE_MEAN(coder->mean[ch], uint);
+      ALACODER_UPDATE_MEAN(coder->estimated_mean[ch], uint);
       /* 符号付き整数に変換 */
       data[ch][smpl] = ALAUTILITY_UINT32_TO_SINT32(uint);
     }
