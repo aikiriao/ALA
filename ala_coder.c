@@ -14,22 +14,22 @@
 #define ALACODER_UINT32_TO_FIXED_FLOAT(u32)     ((u32) << (ALACODER_NUM_FRACTION_PART_BITS))
 /* 固定小数を符号なし整数に変換 */
 #define ALACODER_FIXED_FLOAT_TO_UINT32(fixed)   (uint32_t)(((fixed) + (ALACODER_FIXED_FLOAT_0_5)) >> (ALACODER_NUM_FRACTION_PART_BITS))
-/* Rice符号のパラメータ更新 */
-/* 指数平滑平均により平均値を推定 */
-#define ALACODER_UPDATE_RICE_PARAMETER(param, code) {\
-  (param) = (ALAFixedFloatRiceParameter)(119 * (param) + 9 * ALACODER_UINT32_TO_FIXED_FLOAT(code) + (1UL << 6)) >> 7; \
+/* Rice符号のパラメータ更新用マクロ */
+/* 指数平滑平均により平均値を更新 */
+#define ALACODER_UPDATE_MEAN(mean, uint) {\
+  (mean) = (ALACoderFixedFloat)(119 * (mean) + 9 * ALACODER_UINT32_TO_FIXED_FLOAT(uint) + (1UL << 6)) >> 7; \
 }
 /* Rice符号のパラメータ計算 2 ** ceil(log2(E(x)/2)) = E(x)/2の2の冪乗切り上げ */
-#define ALACODER_CALCULATE_RICE_PARAMETER(param) \
-  ALAUtility_RoundUp2Powered(ALAUTILITY_MAX(ALACODER_FIXED_FLOAT_TO_UINT32((param) >> 1), 1UL))
+#define ALACODER_CALCULATE_RICE_PARAMETER(mean) \
+  ALAUtility_RoundUp2Powered(ALAUTILITY_MAX(ALACODER_FIXED_FLOAT_TO_UINT32((mean) >> 1), 1UL))
 
-/* Rice符号固定小数点パラメータ型 */
-typedef uint64_t ALAFixedFloatRiceParameter;
+/* 固定小数点型 */
+typedef uint64_t ALACoderFixedFloat;
 
 /* 符号化/復号ハンドル */
 struct ALACoder {
-  ALAFixedFloatRiceParameter* rice_parameter;
-  uint32_t                    max_num_channels;
+   ALACoderFixedFloat* mean;
+  uint32_t            max_num_channels;
 };
 
 /* ライス符号の出力 */
@@ -93,8 +93,8 @@ struct ALACoder* ALACoder_Create(uint32_t max_num_channels)
   coder = (struct ALACoder *)malloc(sizeof(struct ALACoder));
   coder->max_num_channels   = max_num_channels;
 
-  coder->rice_parameter
-    = (ALAFixedFloatRiceParameter *)malloc(sizeof(ALAFixedFloatRiceParameter) * max_num_channels);
+  coder->mean
+    = (ALACoderFixedFloat *)malloc(sizeof(ALACoderFixedFloat) * max_num_channels);
 
   return coder;
 }
@@ -103,7 +103,7 @@ struct ALACoder* ALACoder_Create(uint32_t max_num_channels)
 void ALACoder_Destroy(struct ALACoder* coder)
 {
   if (coder != NULL) {
-    free(coder->rice_parameter);
+    free(coder->mean);
     free(coder);
   }
 }
@@ -126,7 +126,7 @@ void ALACoder_PutDataArray(
     mean_uint /= num_samples;
     assert(mean_uint < (1UL << 16));
     BitStream_PutBits(strm, 16, mean_uint);
-    coder->rice_parameter[ch] = ALACODER_UINT32_TO_FIXED_FLOAT(mean_uint);
+    coder->mean[ch] = ALACODER_UINT32_TO_FIXED_FLOAT(mean_uint);
   }
 
   /* 各チャンネル毎に符号化 */
@@ -135,9 +135,9 @@ void ALACoder_PutDataArray(
       /* 符号なし整数に変換 */
       uint = ALAUTILITY_SINT32_TO_UINT32(data[ch][smpl]);
       /* ライス符号化 */
-      ALACoder_PutRiceCode(strm, ALACODER_CALCULATE_RICE_PARAMETER(coder->rice_parameter[ch]), uint);
+      ALACoder_PutRiceCode(strm, ALACODER_CALCULATE_RICE_PARAMETER(coder->mean[ch]), uint);
       /* パラメータを適応的に変更 */
-      ALACODER_UPDATE_RICE_PARAMETER(coder->rice_parameter[ch], uint);
+      ALACODER_UPDATE_MEAN(coder->mean[ch], uint);
     }
   }
 }
@@ -155,16 +155,16 @@ void ALACoder_GetDataArray(
   for (ch = 0; ch < num_channels; ch++) {
     uint64_t bitsbuf;
     BitStream_GetBits(strm, 16, &bitsbuf);
-    coder->rice_parameter[ch] = ALACODER_UINT32_TO_FIXED_FLOAT(bitsbuf);
+    coder->mean[ch] = ALACODER_UINT32_TO_FIXED_FLOAT(bitsbuf);
   }
 
   /* 各チャンネル毎に復号 */
   for (ch = 0; ch < num_channels; ch++) {
     for (smpl = 0; smpl < num_samples; smpl++) {
       /* ライス符号を復号 */
-      uint = ALACoder_GetRiceCode(strm, ALACODER_CALCULATE_RICE_PARAMETER(coder->rice_parameter[ch]));
+      uint = ALACoder_GetRiceCode(strm, ALACODER_CALCULATE_RICE_PARAMETER(coder->mean[ch]));
       /* パラメータを適応的に変更 */
-      ALACODER_UPDATE_RICE_PARAMETER(coder->rice_parameter[ch], uint);
+      ALACODER_UPDATE_MEAN(coder->mean[ch], uint);
       /* 符号付き整数に変換 */
       data[ch][smpl] = ALAUTILITY_UINT32_TO_SINT32(uint);
     }
