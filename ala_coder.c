@@ -109,13 +109,16 @@ void ALACoder_Destroy(struct ALACoder* coder)
 }
 
 /* 符号付き整数配列の符号化 */
-void ALACoder_PutDataArray(
+ALACoderApiResult ALACoder_PutDataArray(
     struct ALACoder* coder, struct BitStream* strm,
     const int32_t** data, uint32_t num_channels, uint32_t num_samples)
 {
   uint32_t smpl, ch, uint;
 
-  assert((strm != NULL) && (data != NULL) && (coder != NULL));
+  /* 引数チェック */
+  if ((strm == NULL) || (data == NULL) || (coder == NULL)) {
+    return ALACODER_APIRESULT_INVALID_ARGUMENT;
+  }
 
   /* 各チャンネルの平均値をパラメータ初期値としてセット/記録 */
   for (ch = 0; ch < num_channels; ch++) {
@@ -140,16 +143,21 @@ void ALACoder_PutDataArray(
       ALACODER_UPDATE_ESTIMATED_MEAN(coder->estimated_mean[ch], uint);
     }
   }
+
+  return ALACODER_APIRESULT_OK;
 }
 
 /* 符号付き整数配列の復号 */
-void ALACoder_GetDataArray(
+ALACoderApiResult ALACoder_GetDataArray(
     struct ALACoder* coder, struct BitStream* strm,
     int32_t** data, uint32_t num_channels, uint32_t num_samples)
 {
   uint32_t ch, smpl, uint;
 
-  assert((strm != NULL) && (data != NULL) && (coder != NULL));
+  /* 引数チェック */
+  if ((strm == NULL) || (data == NULL) || (coder == NULL)) {
+    return ALACODER_APIRESULT_INVALID_ARGUMENT;
+  }
 
   /* パラメータ初期値の取得 */
   for (ch = 0; ch < num_channels; ch++) {
@@ -169,4 +177,6 @@ void ALACoder_GetDataArray(
       data[ch][smpl] = ALAUTILITY_UINT32_TO_SINT32(uint);
     }
   }
+
+  return ALACODER_APIRESULT_OK;
 }
