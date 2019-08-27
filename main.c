@@ -130,10 +130,10 @@ int do_encode(const char* in_filename, const char* out_filename)
   BitStream_PutBits(out_strm, 32, in_wav->format.sampling_rate);
   /* サンプルあたりbit数 */
   BitStream_PutBits(out_strm,  8, in_wav->format.bits_per_sample);
-  /* PARCOR係数次数 */
-  BitStream_PutBits(out_strm,  8, ALA_PARCOR_ORDER);
   /* ブロックあたりサンプル数 */
   BitStream_PutBits(out_strm, 16, ALA_NUM_SAMPLES_PER_BLOCK);
+  /* PARCOR係数次数 */
+  BitStream_PutBits(out_strm,  8, ALA_PARCOR_ORDER);
 
   /* ブロック単位で残差計算/符号化 */
   enc_offset_sample = 0;
@@ -308,12 +308,12 @@ int do_decode(const char* in_filename, const char* out_filename)
   /* サンプルあたりbit数 */
   BitStream_GetBits(in_strm,  8, &bitsbuf);
   wav_format.bits_per_sample = (uint32_t)bitsbuf;
-  /* PARCOR係数次数 */
-  BitStream_GetBits(in_strm,  8, &bitsbuf);
-  parcor_order = (uint32_t)bitsbuf;
   /* ブロックあたりサンプル数 */
   BitStream_GetBits(in_strm, 16, &bitsbuf);
   num_block_samples = (uint32_t)bitsbuf;
+  /* PARCOR係数次数 */
+  BitStream_GetBits(in_strm,  8, &bitsbuf);
+  parcor_order = (uint32_t)bitsbuf;
 
   /* 得られた情報を表示 */
   printf("Num Channels:%d \n",          wav_format.num_channels);
