@@ -126,7 +126,8 @@ ALACoderApiResult ALACoder_PutDataArray(
       mean_uint += ALAUTILITY_SINT32_TO_UINT32(data[ch][smpl]);
     }
     mean_uint /= num_samples;
-    assert(mean_uint < (1UL << 16));
+    /* 平均の最大は符号無し16bit整数の最大値に制限 */
+    mean_uint = ALAUTILITY_MIN(mean_uint, UINT16_MAX);
     BitStream_PutBits(strm, 16, mean_uint);
     coder->estimated_mean[ch] = ALACODER_UINT32_TO_FIXED_FLOAT(mean_uint);
   }
