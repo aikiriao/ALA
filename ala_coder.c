@@ -14,8 +14,7 @@
 #define ALACODER_UINT32_TO_FIXED_FLOAT(u32)     ((u32) << (ALACODER_NUM_FRACTION_PART_BITS))
 /* 固定小数を符号なし整数に変換 */
 #define ALACODER_FIXED_FLOAT_TO_UINT32(fixed)   (uint32_t)(((fixed) + (ALACODER_FIXED_FLOAT_0_5)) >> (ALACODER_NUM_FRACTION_PART_BITS))
-/* Rice符号のパラメータ更新用マクロ */
-/* 指数平滑平均により推定平均値を更新 */
+/* 推定平均値の更新マクロ（指数平滑平均により推定平均値を更新） */
 #define ALACODER_UPDATE_ESTIMATED_MEAN(mean, uint) {\
   (mean) = (ALACoderFixedFloat)(119 * (mean) + 9 * ALACODER_UINT32_TO_FIXED_FLOAT(uint) + (1UL << 6)) >> 7; \
 }
@@ -120,7 +119,7 @@ ALACoderApiResult ALACoder_PutDataArray(
     return ALACODER_APIRESULT_INVALID_ARGUMENT;
   }
 
-  /* 各チャンネルの平均値をパラメータ初期値としてセット/記録 */
+  /* 各チャンネルの平均値をセット/記録 */
   for (ch = 0; ch < num_channels; ch++) {
     uint64_t mean_uint = 0;
     for (smpl = 0; smpl < num_samples; smpl++) {
@@ -159,7 +158,7 @@ ALACoderApiResult ALACoder_GetDataArray(
     return ALACODER_APIRESULT_INVALID_ARGUMENT;
   }
 
-  /* パラメータ初期値の取得 */
+  /* 平均値初期値の取得 */
   for (ch = 0; ch < num_channels; ch++) {
     uint64_t bitsbuf;
     BitStream_GetBits(strm, 16, &bitsbuf);
