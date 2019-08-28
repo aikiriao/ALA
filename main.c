@@ -108,12 +108,6 @@ int do_encode(const char* in_filename, const char* out_filename)
     }
   }
 
-  /* ステレオチャンネル以上ならばMS処理を行う */
-  if (num_channels >= 2) {
-    ALAChannelDecorrelator_LRtoMSDouble(input, num_channels, num_samples);
-    ALAChannelDecorrelator_LRtoMSInt32(input_int32, num_channels, num_samples);
-  }
-
   /* ヘッダの書き出し */
   /* シグネチャ */
   BitStream_PutBits(out_strm,  8, 'A');
@@ -134,6 +128,12 @@ int do_encode(const char* in_filename, const char* out_filename)
   BitStream_PutBits(out_strm, 16, ALA_NUM_SAMPLES_PER_BLOCK);
   /* PARCOR係数次数 */
   BitStream_PutBits(out_strm,  8, ALA_PARCOR_ORDER);
+
+  /* ステレオチャンネル以上ならばMS処理を行う */
+  if (num_channels >= 2) {
+    ALAChannelDecorrelator_LRtoMSDouble(input, num_channels, num_samples);
+    ALAChannelDecorrelator_LRtoMSInt32(input_int32, num_channels, num_samples);
+  }
 
   /* ブロック単位で残差計算/符号化 */
   enc_offset_sample = 0;
@@ -224,7 +224,7 @@ int do_encode(const char* in_filename, const char* out_filename)
   }
 
   /* 出力サイズ取得 */
-  (void)BitStream_Tell(out_strm, &encoded_data_size);
+  BitStream_Tell(out_strm, &encoded_data_size);
 
   /* 圧縮結果表示 */
   printf("Encode succuess! size:%d -> %d \n", (uint32_t)fstat.st_size, encoded_data_size);
@@ -342,7 +342,6 @@ int do_decode(const char* in_filename, const char* out_filename)
 
   /* 合成ハンドル作成 */
   lpcs  = ALALPCSynthesizer_Create(parcor_order);
-
   /* 残差復号ハンドル作成 */
   coder = ALACoder_Create(num_channels);
 
@@ -449,6 +448,7 @@ static void print_usage(char** argv)
 /* メインエントリ */
 int main(int argc, char** argv)
 {
+  const char* option;
   const char* input_file;
   const char* output_file;
 
@@ -458,16 +458,18 @@ int main(int argc, char** argv)
     return 1;
   }
 
+  /* 引数文字列の取得 */
+  option      = argv[1];
   input_file  = argv[2];
   output_file = argv[3];
 
   /* エンコード/デコード呼び分け */
-  if (strcmp(argv[1], "-e") == 0) {
+  if (strcmp(option, "-e") == 0) {
     if (do_encode(input_file, output_file) != 0) {
       fprintf(stderr, "Failed to encode. \n");
       return 1;
     }
-  } else if (strcmp(argv[1], "-d") == 0) {
+  } else if (strcmp(option, "-d") == 0) {
     if (do_decode(input_file, output_file) != 0) {
       fprintf(stderr, "Failed to decode. \n");
       return 1;
