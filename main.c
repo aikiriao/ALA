@@ -35,7 +35,6 @@
 int do_encode(const char* in_filename, const char* out_filename)
 {
   struct WAVFile*           in_wav;
-  struct stat               fstat;
   struct BitStream*         out_strm;
   struct ALACoder*          coder;
   struct ALALPCCalculator*  lpcc;
@@ -43,7 +42,6 @@ int do_encode(const char* in_filename, const char* out_filename)
   uint32_t  ch, smpl, ord;
   double**  parcor_coef;
   int32_t** parcor_coef_int32;
-  int32_t   encoded_data_size;
   double**  input;
   int32_t** input_int32;
   int32_t** residual;
@@ -56,9 +54,6 @@ int do_encode(const char* in_filename, const char* out_filename)
     fprintf(stderr, "Failed to open %s. \n", in_filename);
     return 1;
   }
-
-  /* 入力ファイルのサイズを拾っておく */
-  stat(in_filename, &fstat);
 
   /* 出力ファイルオープン */
   if ((out_strm = BitStream_Open(out_filename, "wb", NULL, 0)) == NULL) {
@@ -223,12 +218,6 @@ int do_encode(const char* in_filename, const char* out_filename)
     }
   }
 
-  /* 出力サイズ取得 */
-  BitStream_Tell(out_strm, &encoded_data_size);
-
-  /* 圧縮結果表示 */
-  printf("Encode succuess! size:%d -> %d \n", (uint32_t)fstat.st_size, encoded_data_size);
-
   /* 領域開放 */
   for (ch = 0; ch < num_channels; ch++) {
     free(input[ch]);
@@ -314,14 +303,6 @@ int do_decode(const char* in_filename, const char* out_filename)
   /* PARCOR係数次数 */
   BitStream_GetBits(in_strm,  8, &bitsbuf);
   parcor_order = (uint32_t)bitsbuf;
-
-  /* 得られた情報を表示 */
-  printf("Num Channels:%d \n",          wav_format.num_channels);
-  printf("Num Samples:%d \n",           wav_format.num_samples);
-  printf("Sampling Rate:%d \n",         wav_format.sampling_rate);
-  printf("Bits Per Sample:%d \n",       wav_format.bits_per_sample);
-  printf("PARCOR Order:%d \n",          parcor_order);
-  printf("Num Samples Per Block:%d \n", num_block_samples);
 
   /* 出力wavハンドルの生成 */
   wav_format.data_format  = WAV_DATA_FORMAT_PCM;
