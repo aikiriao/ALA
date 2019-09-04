@@ -279,7 +279,7 @@ BitStreamApiResult BitStream_GetBit(struct BitStream* stream, uint8_t* bit)
   }
 
   /* 1バイト読み込みとエラー処理 */
-  if ((ch = getc(stream->fp)) == EOF) {
+  if ((ch = fgetc(stream->fp)) == EOF) {
     if (feof(stream->fp)) {
       /* ファイル終端に達した */
       return BITSTREAM_APIRESULT_EOS;
@@ -327,7 +327,7 @@ BitStreamApiResult BitStream_GetBits(struct BitStream* stream, uint32_t n_bits, 
     n_bits  -= stream->bit_count;
     tmp     |= BITSTREAM_GETLOWERBITS(stream->bit_count, stream->bit_buffer) << n_bits;
     /* 1バイト読み込みとエラー処理 */
-    if ((ch = getc(stream->fp)) == EOF) {
+    if ((ch = fgetc(stream->fp)) == EOF) {
       if (feof(stream->fp)) {
         /* 途中でファイル終端に達していたら、ループを抜ける */
         goto END_OF_STREAM;
