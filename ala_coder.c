@@ -14,7 +14,7 @@
 #define ALACODER_UINT32_TO_FIXED_FLOAT(u32)     ((u32) << (ALACODER_NUM_FRACTION_PART_BITS))
 /* 固定小数を符号なし整数に変換 */
 #define ALACODER_FIXED_FLOAT_TO_UINT32(fixed)   (uint32_t)(((fixed) + (ALACODER_FIXED_FLOAT_0_5)) >> (ALACODER_NUM_FRACTION_PART_BITS))
-/* 推定平均値の更新マクロ（指数平滑平均により推定平均値を更新） */
+/* 推定平均値の更新マクロ（指数移動平均により推定平均値を更新） */
 #define ALACODER_UPDATE_ESTIMATED_MEAN(mean, uint) {\
   (mean) = (ALACoderFixedFloat)(119 * (mean) + 9 * ALACODER_UINT32_TO_FIXED_FLOAT(uint) + (1UL << 6)) >> 7; \
 }
