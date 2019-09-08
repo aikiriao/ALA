@@ -44,6 +44,8 @@ int do_encode(const char* in_filename, const char* out_filename)
   int32_t** parcor_coef_int32;
   double**  input;
   int32_t** input_int32;
+  double**  input_ptr;
+  int32_t** input_int32_ptr;
   int32_t** residual;
   double*   window;
   uint32_t  num_channels, num_samples;
@@ -74,6 +76,8 @@ int do_encode(const char* in_filename, const char* out_filename)
   /* 領域割当て */
   input             = (double **)malloc(sizeof(double *) * num_channels);
   input_int32       = (int32_t **)malloc(sizeof(int32_t *) * num_channels);
+  input_ptr         = (double **)malloc(sizeof(double *) * num_channels);
+  input_int32_ptr   = (int32_t **)malloc(sizeof(int32_t *) * num_channels);
   residual          = (int32_t **)malloc(sizeof(int32_t *) * num_channels);
   parcor_coef       = (double **)malloc(sizeof(double *) * num_channels);
   parcor_coef_int32 = (int32_t **)malloc(sizeof(int32_t *) * num_channels);
@@ -124,12 +128,6 @@ int do_encode(const char* in_filename, const char* out_filename)
   /* PARCOR係数次数 */
   BitStream_PutBits(out_strm,  8, ALA_PARCOR_ORDER);
 
-  /* ステレオチャンネル以上ならばMS処理を行う */
-  if (num_channels >= 2) {
-    ALAChannelDecorrelator_LRtoMSDouble(input, num_channels, num_samples);
-    ALAChannelDecorrelator_LRtoMSInt32(input_int32, num_channels, num_samples);
-  }
-
   /* ブロック単位で残差計算/符号化 */
   enc_offset_sample = 0;
   while (enc_offset_sample < num_samples) {
@@ -138,20 +136,32 @@ int do_encode(const char* in_filename, const char* out_filename)
     /* エンコードするサンプル数の決定 */
     num_encode_samples = ALAUTILITY_MIN(ALA_NUM_SAMPLES_PER_BLOCK, num_samples - enc_offset_sample);
 
+    /* 処理位置にポインタを設定 */
+    for (ch = 0; ch < num_channels; ch++) {
+      input_ptr[ch]       = &input[ch][enc_offset_sample];
+      input_int32_ptr[ch] = &input_int32[ch][enc_offset_sample];
+    }
+
+    /* ステレオチャンネル以上ならばMS処理を行う */
+    if (num_channels >= 2) {
+      ALAChannelDecorrelator_LRtoMSDouble(input_ptr, num_channels, num_encode_samples);
+      ALAChannelDecorrelator_LRtoMSInt32(input_int32_ptr, num_channels, num_encode_samples);
+    }
+
     /* 窓の作成 */
     ALAUtility_MakeSinWindow(window, num_encode_samples);
     /* 窓掛け */
     for (ch = 0; ch < num_channels; ch++) {
-      ALAUtility_ApplyWindow(window, &input[ch][enc_offset_sample], num_encode_samples);
+      ALAUtility_ApplyWindow(window, input_ptr[ch], num_encode_samples);
     }
 
     /* PARCOR係数の導出 */
     for (ch = 0; ch < num_channels; ch++) {
       /* プリエンファシス */
       ALAEmphasisFilter_PreEmphasisDouble(
-          &input[ch][enc_offset_sample], num_encode_samples, ALA_EMPHASIS_FILTER_SHIFT);
+          input_ptr[ch], num_encode_samples, ALA_EMPHASIS_FILTER_SHIFT);
       if (ALALPCCalculator_CalculatePARCORCoefDouble(lpcc,
-            &input[ch][enc_offset_sample], num_encode_samples,
+            input_ptr[ch], num_encode_samples,
             parcor_coef[ch], ALA_PARCOR_ORDER) != ALAPREDICTOR_APIRESULT_OK) {
         fprintf(stderr, "Failed to calculate PARCOR coefficients. \n");
         return 1;
@@ -175,7 +185,7 @@ int do_encode(const char* in_filename, const char* out_filename)
     /* 残差計算 */
     /* プリエンファシスフィルタ */
     for (ch = 0; ch < num_channels; ch++) {
-      if (ALAEmphasisFilter_PreEmphasisInt32(&input_int32[ch][enc_offset_sample],
+      if (ALAEmphasisFilter_PreEmphasisInt32(input_int32_ptr[ch],
             num_encode_samples, ALA_EMPHASIS_FILTER_SHIFT) != ALAPREDICTOR_APIRESULT_OK) {
         fprintf(stderr, "Failed to apply pre-emphasis. \n");
         return 1;
@@ -184,7 +194,7 @@ int do_encode(const char* in_filename, const char* out_filename)
     /* PARCOR予測フィルタ */
     for (ch = 0; ch < num_channels; ch++) {
       if (ALALPCSynthesizer_PredictByParcorCoefInt32(lpcs, 
-            &input_int32[ch][enc_offset_sample], num_encode_samples,
+            input_int32_ptr[ch], num_encode_samples,
             parcor_coef_int32[ch], ALA_PARCOR_ORDER, residual[ch]) != ALAPREDICTOR_APIRESULT_OK) {
         fprintf(stderr, "Failed to predict parcor filter. \n");
         return 1;
@@ -228,6 +238,8 @@ int do_encode(const char* in_filename, const char* out_filename)
   }
   free(input);
   free(input_int32);
+  free(input_ptr);
+  free(input_int32_ptr);
   free(residual);
   free(parcor_coef);
   free(parcor_coef_int32);
