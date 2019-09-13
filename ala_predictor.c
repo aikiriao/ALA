@@ -494,7 +494,7 @@ ALAPredictorApiResult ALAChannelDecorrelator_LRtoMSInt32(int32_t **data,
   /* サンプル単位でLR -> MS処理 */
   for (smpl = 0; smpl < num_samples; smpl++) {
     /* 注意: 除算は右シフト必須(/2ではだめ。0方向に丸められる) */
-    mid   = (data[0][smpl] + data[1][smpl]) >> 1; 
+    mid   = (int32_t)ALAUTILITY_SHIFT_RIGHT_ARITHMETIC(data[0][smpl] + data[1][smpl], 1); 
     side  = data[0][smpl] - data[1][smpl];
     data[0][smpl] = mid; 
     data[1][smpl] = side;
@@ -521,8 +521,8 @@ ALAPredictorApiResult ALAChannelDecorrelator_MStoLRInt32(int32_t **data,
   for (smpl = 0; smpl < num_samples; smpl++) {
     side  = data[1][smpl];
     mid   = (data[0][smpl] << 1) | (side & 1);
-    data[0][smpl] = (mid + side) >> 1;
-    data[1][smpl] = (mid - side) >> 1;
+    data[0][smpl] = (int32_t)ALAUTILITY_SHIFT_RIGHT_ARITHMETIC(mid + side, 1);
+    data[1][smpl] = (int32_t)ALAUTILITY_SHIFT_RIGHT_ARITHMETIC(mid - side, 1);
   }
 
   return ALAPREDICTOR_APIRESULT_OK;
